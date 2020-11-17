@@ -28,6 +28,7 @@ class Customer:
         new_location = np.random.choice(locations, p=matrix.loc[self.location])
         self.location = new_location
 
+"""
 z = 5
 customers = []
 for customer in range(1,z):
@@ -45,10 +46,6 @@ while True:
             customers.remove(customer)
             del customer
     
-    # Add new customer every 3rd round
-    if t%3 == 0:
-        customers.append(Customer(z,'entrance'))
-        z += 1
 
     # Print customer list
     if customers == []:
@@ -59,3 +56,4 @@ while True:
     print('\n')
     t += 1
     time.sleep(3)
+"""
