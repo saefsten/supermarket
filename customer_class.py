@@ -3,14 +3,9 @@ import numpy as np
 import time
 
 locations = ['checkout','dairy','drinks','fruit','spices']
-data = {
-    'dairy': [0.35,0.0,0.24,0.2,0.21],
-    'drinks': [0.53, 0.03, 0.0, 0.23, 0.21],
-    'entrance':[0.0,0.28,0.16,0.36,0.2],
-    'fruit':[0.52,0.23,0.13,0.0,0.12],
-    'spices':[0.24,0.31,0.29,0.16,0.0]
-    }
-matrix = pd.DataFrame.from_dict(data, orient='index', columns=locations)
+
+matrix = pd.read_csv('transition_matrix.csv', sep=';',index_col=['location'])
+
 
 class Customer:
 
