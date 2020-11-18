@@ -128,3 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 hannes_data_exploration.ipynb
+area.png
+flag.ipynb
+simulation.csv

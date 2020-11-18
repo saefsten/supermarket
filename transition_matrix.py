@@ -17,7 +17,7 @@ for day in days:
         # here we interpolate by the minute to record when people stay at a location longer:
         customer_walk["timestamp"] = pd.to_datetime(customer_walk["timestamp"])
         customer_walk.set_index("timestamp", inplace=True)
-        customer_walk = customer_walk.resample('T').bfill() #"T" resamples by minute
+        customer_walk = customer_walk.resample('T').ffill() #"T" resamples by minute
         # record the movement in "customer_walk"-dataframe with a new column "next_location":
         customer_walk["next_location"]=customer_walk["location"].shift(-1)
         customer_walk = customer_walk.reset_index()
