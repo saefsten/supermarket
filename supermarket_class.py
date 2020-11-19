@@ -45,12 +45,13 @@ class Supermarket:
         self.minutes += 1
         for customer in self.customers:
             oldlocation = customer.location
-            print(f'Customer {customer.id} moves from {oldlocation} to:')
             customer.change_location()            
             newlocation = customer.location
-            print(f' {newlocation}.')
+            if oldlocation != newlocation:
+                print(f'Customer {customer.id} moves from {oldlocation} to: {newlocation}.')
+            else:
+                print(f'Customer {customer.id} is taking some more time at: {oldlocation}.')
 
-    
     def add_new_customers(self):
         """randomly creates new customers.
         """
@@ -82,5 +83,5 @@ while doodl.minutes < 22 * 60:
     for element in data:
         df.loc[len(df)] = element
     doodl.remove_existing_customers()
-print('The supermarket is closing. All remaining customers, rush to the checkout!')
+print('The supermarket is closing. All remaining customers rush to the checkout!')
 df.to_csv('simulation.csv')
