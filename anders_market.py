@@ -27,18 +27,36 @@ class SupermarketMap:
             return self.tiles[0:32, 0:32]
         elif char == 'b': #banana
             return self.tiles[0:32,4*32:5*32]
+        elif char == 'B': #eggplant
+            return self.tiles[1*32:2*32,11*32:12*32]
         elif char == 'w': #watermelon
             return self.tiles[3*32:4*32, 4*32:5*32]
+        elif char == 'W': #pinapple
+            return self.tiles[5*32:6*32, 4*32:5*32]
         elif char == 'e': #egg
             return self.tiles[7*32:8*32, 11*32:12*32]
+        elif char == 'E': #ice cream
+            return self.tiles[6*32:7*32, 12*32:13*32]
+        elif char == 'f': #ice cream cone
+            return self.tiles[0*32:1*32, 13*32:14*32]
         elif char == 's': #spices
             return self.tiles[4*32:5*32, 9*32:10*32]
-        elif char == 'z': #beer
+        elif char == 'S': #spices
+            return self.tiles[5*32:6*32, 9*32:10*32]
+        elif char == 'z': #spices
+            return self.tiles[6*32:7*32, 9*32:10*32]
+        elif char == 'u': #beer
             return self.tiles[6*32:7*32, 13*32:14*32]
+        elif char == 'U': #cocktail
+            return self.tiles[3*32:4*32, 13*32:14*32]
         elif char == 'G':
             return self.tiles[7*32:8*32, 3*32:4*32]
         elif char == 'C':
             return self.tiles[2*32:3*32, 8*32:9*32]
+        elif char == 'c':
+            return self.tiles[1*32:2*32, 8*32:9*32]
+        elif char == 'q':
+            return self.tiles[3*32:4*32, 8*32:9*32]
         else:
             return self.tiles[32:64, 64:96]
 
