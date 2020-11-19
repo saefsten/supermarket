@@ -193,7 +193,10 @@ class Supermarket:
             customer.change_location()            
             newlocation = customer.location
             if oldlocation != newlocation:
-                customer.goal = waitinglocation[newlocation]
+                if newlocation != 'checkout':
+                    customer.goal = waitinglocation[newlocation]
+                else:
+                    customer.goal = waitinglocation[oldlocation+'checkout']                    
 #                customer.x, customer.y = waitinglocation[newlocation]
                 print(f'Customer {customer.id} moves from {oldlocation} to: {newlocation}.')
             else:   
@@ -223,20 +226,18 @@ class Supermarket:
                 j += 1
 
 
-
 if __name__ == "__main__":
-
-    
-
 
     locations = ['checkout','dairy','drinks','fruit','spices']
     waitinglocation = {}
-    waitinglocation['checkout'] = [8,7]
     waitinglocation['dairy'] = [10,4]
     waitinglocation['drinks'] = [2,4]
     waitinglocation['fruit'] = [14,4] 
     waitinglocation['spices'] = [6,4]
-    
+    waitinglocation['drinkscheckout'] = [4,7]
+    waitinglocation['spicescheckout'] = [4,7]
+    waitinglocation['dairycheckout'] = [8,7]
+    waitinglocation['fruitcheckout'] = [12,7]    
     matrix = pd.read_csv('transition_matrix.csv', sep=';',index_col=['location'])    
 
     background = np.zeros((700, 1000, 3), np.uint8)
@@ -246,11 +247,6 @@ if __name__ == "__main__":
 
     hmframe = np.zeros((700, 1000, 3), np.uint8)
     cv2.imshow("frame", hmframe)
-
-#    while True:
-#        key = chr(cv2.waitKey(1) & 0xFF)
-#        if key == "q":
-#            break
 
 
     possible_moves = [(0,1),(0,-1),(1,0),(-1,0),(1,1),(1,-1),(-1,1),(-1,-1)]
@@ -265,8 +261,6 @@ if __name__ == "__main__":
         doodl.add_new_customers()
         data = doodl.print_customers()
 
-#        time.sleep(.5)
-        doodl.marketmap.draw(frame)
         moving = 1
         while moving == 1:
             doodl.marketmap.draw(frame)
@@ -276,65 +270,22 @@ if __name__ == "__main__":
                     moving = 1
                     goal1 = element.goal.copy()
                     path = find_path(MARKET2, [element.y, element.x], goal1, possible_moves)
-#                    print(path)
                     element.y = path[1][0]
                     element.x = path[1][1] 
-#                    print('first step:')
-#                    print(element.x)
-#                    print(element.y)
-#                    element.y = path[0][1]
-                    element.draw(frame)
+
                     if element.goal == [element.x, element.y]:
                         element.goal = [0,0]
-                else:
-                    element.draw(frame)
-#            time.sleep(.5)
-
+                element.draw(frame)
 
             cv2.imshow("frame", frame)
-   #        time.sleep(.2)
-            while True:
-                key = chr(cv2.waitKey(1) & 0xFF)
-                if key == "q":
-                    break
+            k = cv2.waitKey(100) 
+
         for element in data:
             df.loc[len(df)] = element
-            doodl.remove_existing_customers()
-        while True:
-            key = chr(cv2.waitKey(1) & 0xFF)
-            if key == "q":
-                break
+        doodl.remove_existing_customers()
 
     print('The supermarket is closing. All remaining customers rush to the checkout!')
     df.to_csv('simulation.csv')
-
-#    customer = []
-#    customer.append(Customer('1','entrance',market,tiles[7 * 32 : 8 * 32, 2 * 32 : 3 * 32],15,10))
-
-#    while True:
-#        frame = background.copy()
-#        market.draw(frame)
-#        for element in customer:
-#            element.draw(frame)
-
-#        cv2.imshow("frame", frame)
-
-#        key = chr(cv2.waitKey(1) & 0xFF)
-#        if key == "q":
-#            break
-#        elif key == "w":
-#            for element in customer:
-#                element.moveonmap('u')
-#        elif key == "s":
-#            for element in customer:
-#                element.moveonmap('d')
-#        elif key == "a":
-#            for element in customer:
-#                element.moveonmap('l')
-#        elif key == "d":
-#            for element in customer:
-#                element.moveonmap('r')
-#
 
     cv2.destroyAllWindows()
 
