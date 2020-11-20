@@ -209,7 +209,7 @@ class Supermarket:
         self.minutes += 1
         self.marketmap.draw(frame)        
         for customer in self.customers:
-            if customer.oldlocation != 'stalled':       # if customer is not stalled, change location according to the matrix
+            if customer.oldlocation != 'stalled':       # if customer is not stalled, define new location and set goal on route map
                 customer.oldlocation = customer.location
                 customer.change_location()            
             newlocation = customer.location
@@ -222,12 +222,17 @@ class Supermarket:
                             customer.goal = locelement
                             shortestdistance = distancefromlocation
 
-                cv2.rectangle(frame, (0,500),(900,600), (00,0,0), 50)
-                cv2.putText(frame, f'Customer {customer.id} moves from {customer.oldlocation} to: {newlocation}.', (0, 500), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255, 255), 2) 
+                cv2.rectangle(frame, (0,500),(1000,600), (00,0,0), 50)
+                if ghostinvasion == 1:
+                    cv2.putText(frame, f'Customer {customer.id} moves from {customer.oldlocation} to: {newlocation}.', (0, 500), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255, 255), 2)                     
+                elif np.random.rand() < .9:
+                    cv2.putText(frame, f'Customer {customer.id} moves from {customer.oldlocation} to: {newlocation}.', (0, 500), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255, 255), 2) 
+                else:
+                    cv2.putText(frame, 'Secret hint: long press "g" for ghost invasion... if you dare!', (0, 500), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255, 255), 2) 
                 print(f'Customer {customer.id} moves from {customer.oldlocation} to: {newlocation}.')
             else:   
 
-                cv2.rectangle(frame, (0,500),(900,600), (00,0,0), 50)
+                cv2.rectangle(frame, (0,500),(1000,600), (00,0,0), 50)
                 cv2.putText(frame, f'Customer {customer.id} is taking some more time at: {customer.oldlocation}.', (0, 500), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255, 255), 2)                 
                 print(f'Customer {customer.id} is taking some more time at: {customer.oldlocation}.')
             customer.draw(frame)
@@ -253,6 +258,61 @@ class Supermarket:
                 j += 1
 
 
+
+
+
+class Ghost:
+
+    def __init__(self, id, location, terrain_map, image, x, y):
+        self.id = id
+        self.location = location
+
+        self.terrain_map = terrain_map
+        self.image = image
+        self.x = x
+        self.y = y
+
+    def draw(self, frame):
+        xpos = OFS + self.x * TILE_SIZE
+        ypos = OFS + self.y * TILE_SIZE
+        frame[ypos: ypos + 32, xpos: xpos + 32] = self.image
+
+        # overlay the Customer image / sprite onto the frame
+        
+    def moveonmap (self, direction):
+        destination = 0
+        newx = self.x
+        newy = self.y
+        if direction == 'u':
+            newy = self.y - 1
+        elif direction == 'd':
+            newy = self.y + 1
+        elif direction == 'r':
+            newx = self.x + 1
+        if direction == 'l':
+            newx = self.x - 1
+        if self.terrain_map.contents[newy][newx] == '.':
+            self.x = newx
+            self.y = newy
+            destination = 1
+        elif self.terrain_map.contents[newy][newx] in ['B', 'S', 'D', 'F']:
+            self.x = newx
+            self.y = newy
+            destination = 2
+        return destination
+            
+    def __repr__(self):
+        return f'Ghost ({self.id}, {self.location})'
+
+
+    def change_location(self):
+        '''where does the ghost go next'''
+        new_location = np.random.choice(locations, p=matrix.loc[self.location])
+        self.location = new_location
+
+
+
+
 if __name__ == "__main__":
 
     locations = ['checkout','dairy','drinks','fruit','spices']
@@ -261,7 +321,6 @@ if __name__ == "__main__":
     waitinglocation['drinks'] = [[2,3],[2,4],[2,5]]
     waitinglocation['fruit'] = [[14,3],[14,4],[14,5]] 
     waitinglocation['spices'] = [[6,3],[6,4],[6,5]]
-#    waitinglocation['checkout'] = [[4,7],[8,7],[12,7]]
     waitinglocation['checkout'] = [[3,8],[3,9],[7,8],[7,9],[11,8],[11,9]]
     matrix = pd.read_csv('transition_matrix.csv', sep=';',index_col=['location'])    
 
@@ -273,9 +332,6 @@ if __name__ == "__main__":
     hmframe = np.zeros((700, 1000, 3), np.uint8)
     cv2.imshow("frame", hmframe)
 
-
-    possible_moves = [(0,1),(0,-1),(1,0),(-1,0),(1,1),(1,-1),(-1,1),(-1,-1)]
-
     doodl = Supermarket(marketmap)
 
     closetime = 0
@@ -283,8 +339,19 @@ if __name__ == "__main__":
         closetime = input('At what time does the supermarket close today? (8 to 24, hours only)')
     
     df = pd.DataFrame(columns=['Time','CustomerID','Location'])
+
+
+    ghostinvasion = 0
+    ghost = []
+
     while doodl.minutes < int(closetime) * 60:
         frame = background.copy()
+        
+        
+        key = chr(cv2.waitKey(1) & 0xFF)
+        if key == "g":
+            ghostinvasion = 1
+            
         doodl.next_minute(frame)
         print(f'Current time is {doodl.get_time()}.')
         doodl.add_new_customers()
@@ -294,11 +361,12 @@ if __name__ == "__main__":
         while moving == 1:
             doodl.marketmap.draw(frame)
             moving = 0
+
             for element in doodl.customers:
 #                print(element.id)
                 if element.goal != [0,0]:
                     moving = 1
-                    MARKET3[element.y][element.x] = 1                           # clear current location on pathfinding map
+                    MARKET3[element.y][element.x] = 1                           # clear previous location on the pathfinding map
                     start1 = (element.x, element.y)
                     goal1 = (element.goal[0], element.goal[1])
                     grid = Grid(matrix=MARKET3)
@@ -311,7 +379,6 @@ if __name__ == "__main__":
                         if element.oldlocation == 'stalled':    # if already stalled in the previous round, give up the search
                             element.goal = [0,0]
                         element.oldlocation = 'stalled'
-#                        print("OOPS! Couldn't calculate route.")
                         print (f"Oops! Customer {element.id} cannot find the route from {element.oldlocation} {start1} to {element.location} {goal1}!")
                     else:
                         newx = path[1][0]
@@ -325,14 +392,40 @@ if __name__ == "__main__":
                     if element.goal == [element.x, element.y]:      # reached the goal
                         element.goal = [0,0]
                         element.oldlocation = "" # empty it, just in case it was stalled
-                    MARKET3[element.y][element.x] = 0
+                    MARKET3[element.y][element.x] = 0                           # mark new location on the pathfinding map
                 element.draw(frame)
+                if ghostinvasion == 1:
+                    for ghostie in ghost:
+                        if np.random.rand() < .25:              # if ghost invasion is on, blink the ghosties every now and then
+                            ghostie.draw(frame)
             cv2.imshow("frame", frame)
             k = cv2.waitKey(75) 
+            if k == "g":
+                ghostinvasion = 1
 
         for element in data:
             df.loc[len(df)] = element
         doodl.remove_existing_customers()
+
+        if ghostinvasion == 1:
+            dest = 0
+            if np.random.rand() < .2:
+                ghost.append(Ghost(str(len(ghost) + 1),'entrance',marketmap,tiles[7 * 32 : 8 * 32, 2 * 32 : 3 * 32],15,10))
+            for element in ghost:
+                element.draw(frame)
+                rndnum = np.random.rand()                               # ghosties fly around in random directions...
+                if rndnum < .25:
+                    direction = 'u'
+                elif rndnum < .5:
+                    direction = 'd'
+                elif rndnum < .75:
+                    direction = 'l'
+                else:
+                    direction = 'r'
+                dest = element.moveonmap(direction)
+                if dest == 2:
+                    ghost.remove(element)                           # ...until they start munching on supermarket produce (and disappear, devoured by their own hunger)
+
     print('The supermarket is closing. All remaining customers rush to the checkout!')
     df.to_csv('simulation.csv')
 
