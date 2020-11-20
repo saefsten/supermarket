@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import cv2
 import time
-from routefinder import find_path
+from a_star import find_path
 
 TILE_SIZE = 32
 OFS = 50
@@ -110,6 +110,7 @@ class Customer:
         self.y = y
         
         self.goal = [0,0]
+        self.oldlocation = "entrance"
 
     def draw(self, frame):
         xpos = OFS + self.x * TILE_SIZE
@@ -189,29 +190,36 @@ class Supermarket:
 #        frame = np.zeros((700, 1000, 3), np.uint8)
         self.marketmap.draw(frame)        
         for customer in self.customers:
-            oldlocation = customer.location
-            customer.change_location()            
+            if customer.oldlocation != 'stalled':       # if customer is not stalled, change location if needed
+                customer.oldlocation = customer.location
+                customer.change_location()            
             newlocation = customer.location
-            if oldlocation != newlocation:
-                if newlocation != 'checkout':
-                    customer.goal = waitinglocation[newlocation]
-                else:
-                    customer.goal = waitinglocation[oldlocation+'checkout']                    
+            if customer.oldlocation != newlocation:
+#                if newlocation != 'checkout':
+                shortestdistance = 100
+                for locelement in waitinglocation[newlocation]:                 # check destinations
+                    if (MARKET2[locelement[1],locelement[0]] == 0):             # is it free?
+                        distancefromlocation = (abs(locelement[0]-customer.x) + abs(locelement[1]-customer.y))
+                        if distancefromlocation < shortestdistance:             # is it the closest?
+                            customer.goal = locelement
+                            shortestdistance = distancefromlocation
+#                else:
+#                    customer.goal = waitinglocation[customer.oldlocation+'checkout']                    
 #                customer.x, customer.y = waitinglocation[newlocation]
-                print(f'Customer {customer.id} moves from {oldlocation} to: {newlocation}.')
+                print(f'Customer {customer.id} moves from {customer.oldlocation} to: {newlocation}.')
             else:   
-                print(f'Customer {customer.id} is taking some more time at: {oldlocation}.')
+                print(f'Customer {customer.id} is taking some more time at: {customer.oldlocation}.')
             customer.draw(frame)
 #        cv2.imshow("frame", frame)
         
     def add_new_customers(self):
         """randomly creates new customers.
         """
-        if np.random.rand() < .33:
+        if np.random.rand() < .25:
             self.last_id += 1
             customerid = str(self.last_id)
-#            self.customers.append(Customer(customerid,'entrance'))
-            self.customers.append(Customer(str(len(self.customers) + 1),'entrance', marketmap, tiles[7 * 32 : 8 * 32, 2 * 32 : 3 * 32],15,10))
+#            self.customers.append(Customer(customerid,'entrance')) // str(len(self.customers) + 1)
+            self.customers.append(Customer(customerid,'entrance', marketmap, tiles[4 * 32 : 5 * 32, 2 * 32 : 3 * 32],15,10))
 
 #            print(f'Customer {customerid} entered the supermarket.')
 
@@ -220,7 +228,7 @@ class Supermarket:
         """
         j = 0
         while j < len(self.customers):
-            if self.customers[j].location == 'checkout':
+            if self.customers[j].location == 'checkout' and self.customers[j].oldlocation != 'stalled':
                 self.customers.remove(self.customers[j])
             else:
                 j += 1
@@ -230,14 +238,11 @@ if __name__ == "__main__":
 
     locations = ['checkout','dairy','drinks','fruit','spices']
     waitinglocation = {}
-    waitinglocation['dairy'] = [10,4]
-    waitinglocation['drinks'] = [2,4]
-    waitinglocation['fruit'] = [14,4] 
-    waitinglocation['spices'] = [6,4]
-    waitinglocation['drinkscheckout'] = [4,7]
-    waitinglocation['spicescheckout'] = [4,7]
-    waitinglocation['dairycheckout'] = [8,7]
-    waitinglocation['fruitcheckout'] = [12,7]    
+    waitinglocation['dairy'] = [[10,3],[10,4],[10,5]]
+    waitinglocation['drinks'] = [[2,3],[2,4],[2,5]]
+    waitinglocation['fruit'] = [[14,3],[14,4],[14,5]] 
+    waitinglocation['spices'] = [[6,3],[6,4],[6,5]]
+    waitinglocation['checkout'] = [[4,7],[8,7],[12,7]]
     matrix = pd.read_csv('transition_matrix.csv', sep=';',index_col=['location'])    
 
     background = np.zeros((700, 1000, 3), np.uint8)
@@ -260,36 +265,58 @@ if __name__ == "__main__":
         print(f'Current time is {doodl.get_time()}.')
         doodl.add_new_customers()
         data = doodl.print_customers()
-
+        print('Moving customers...')
         moving = 1
         while moving == 1:
             doodl.marketmap.draw(frame)
             moving = 0
             for element in doodl.customers:
+#                print(element.id)
                 if element.goal != [0,0]:
+#                    print(MARKET2)
                     moving = 1
-                    goal1 = element.goal.copy()
-                    path = find_path(MARKET2, [element.y, element.x], goal1, possible_moves)
-                    element.y = path[1][0]
-                    element.x = path[1][1] 
-
-                    if element.goal == [element.x, element.y]:
+#                    if MARKET2[element.goal[1], element.goal[0]] == 1:
+#                        element.goal = [0,0]    # if destination tile is occuppied skip this round
+#                        element.location = 'stalled'  # if destination tile is occuppied skip this round
+#                    else:
+                    MARKET2[element.y, element.x] = 0
+                    start1 = (element.y, element.x)
+                    goal1 = (element.goal[1], element.goal[0])
+                    path = find_path(MARKET2, start1, goal1, possible_moves)    # will return 0 if no route found
+                    if (path == 0):         # no route found
+                        if element.oldlocation == 'stalled':    # if already stalled in the previous round, give up the search
+                            element.goal = [0,0]
+                        element.oldlocation = 'stalled'
+                        print("OOPS! Couldn't calculate route.")
+                        print (f"Customer {element.id} cannot find the route from {element.oldlocation} {start1} to {element.location} {goal1}!")
+                        print(MARKET2)
+                    else:
+                        newx = path[1][1]
+                        newy = path[1][0]
+                        if MARKET2[newy, newx] == 1:        # what if the next step's tile is occupied
+                            if element.oldlocation == 'stalled':    # if already stalled in the previous round, give up the search
+                                element.goal = [0,0]
+                            element.oldlocation = 'stalled'
+                        else:
+                            element.x, element.y = newx, newy
+                    if element.goal == [element.x, element.y]:      # reached the goal
                         element.goal = [0,0]
+                        element.oldlocation = "" # empty it, just in case it was stalled
+                    MARKET2[element.y, element.x] = 1
                 element.draw(frame)
-
+#                print(element.id)
             cv2.imshow("frame", frame)
             k = cv2.waitKey(100) 
 
         for element in data:
             df.loc[len(df)] = element
         doodl.remove_existing_customers()
-
     print('The supermarket is closing. All remaining customers rush to the checkout!')
     df.to_csv('simulation.csv')
 
     cv2.destroyAllWindows()
 
-    market.write_image("supermarket.png")
+    marketmap.write_image("supermarket.png")
 
 
 
